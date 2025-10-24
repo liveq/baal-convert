@@ -261,6 +261,56 @@
             font-size: 0.85em;
         }
 
+        /* 툴팁 */
+        .tooltip-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            line-height: 18px;
+            text-align: center;
+            background: var(--gold-primary);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75em;
+            font-weight: 700;
+            cursor: help;
+            margin-left: 6px;
+            position: relative;
+        }
+
+        .tooltip-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 50%;
+            bottom: 130%;
+            transform: translateX(-50%);
+            background: rgba(26, 26, 26, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: tooltipFadeIn 0.2s ease;
+        }
+
+        .tooltip-icon:hover::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 120%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(26, 26, 26, 0.95);
+            z-index: 1000;
+        }
+
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         /* 반응형 */
         @media (max-width: 768px) {
             .option-row {
@@ -388,7 +438,7 @@
                 quality: 0.9
             },
             upscale: {
-                mode: 'speed', // speed, ai
+                mode: 'speed', // speed, quality, ultra
                 scale: 2
             }
         };
@@ -519,10 +569,12 @@
                             <div class="option-control">
                                 <div class="btn-group">
                                     <button class="btn-small active" onclick="setUpscaleMode('speed', this)">🚀 <span data-ko="스피드" data-en="Speed">스피드</span></button>
-                                    <button class="btn-small" onclick="setUpscaleMode('ai', this)">🤖 <span data-ko="AI 품질" data-en="AI Quality">AI 품질</span></button>
+                                    <button class="btn-small" onclick="setUpscaleMode('quality', this)">🤖 <span data-ko="고품질" data-en="Quality">고품질</span></button>
+                                    <button class="btn-small" onclick="setUpscaleMode('ultra', this)">⚡ <span data-ko="울트라" data-en="Ultra">울트라</span></button>
+                                    <span class="tooltip-icon" data-tooltip="울트라: GPU 4GB+ 권장, 1024x1024 이하, 1~3분 소요">?</span>
                                 </div>
                                 <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
-                                    <span data-ko="⚠️ AI 모드: 512x512 이하만 지원 (느림, 최고 품질)" data-en="⚠️ AI Mode: 512x512 or less only (Slow, best quality)">⚠️ AI 모드: 512x512 이하만 지원 (느림, 최고 품질)</span>
+                                    <span data-ko="스피드: 빠름 | 고품질: 512x512 이하 | 울트라: 1024x1024 이하" data-en="Speed: Fast | Quality: 512x512 max | Ultra: 1024x1024 max">스피드: 빠름 | 고품질: 512x512 이하 | 울트라: 1024x1024 이하</span>
                                 </small>
                             </div>
                         </div>
@@ -822,12 +874,14 @@
 
             let destCanvas;
 
-            if (mode === 'ai') {
-                // AI 모드: UpscalerJS 사용
+            if (mode === 'quality' || mode === 'ultra') {
+                // 고품질/울트라 모드: UpscalerJS 사용
                 // 크기 제한 체크
-                if (img.width > 512 || img.height > 512) {
-                    window.BaalUtils.showToast('AI 모드는 512x512 이하 이미지만 지원합니다. 스피드 모드를 사용하세요.', 'error', 5000);
-                    throw new Error('AI 모드는 512x512 이하 이미지만 지원합니다.');
+                const maxSize = mode === 'quality' ? 512 : 1024;
+                if (img.width > maxSize || img.height > maxSize) {
+                    const modeName = mode === 'quality' ? '고품질' : '울트라';
+                    window.BaalUtils.showToast(`${modeName} 모드는 ${maxSize}x${maxSize} 이하 이미지만 지원합니다.`, 'error', 5000);
+                    throw new Error(`${modeName} 모드는 ${maxSize}x${maxSize} 이하 이미지만 지원합니다.`);
                 }
 
                 // UpscalerJS 초기화
@@ -835,7 +889,7 @@
                     window.BaalUtils.showToast('AI 모델 로딩 중... (최초 1회, 20-30초 소요)', 'info', 5000);
                     window.upscalerInstance = new Upscaler({
                         model: 'esrgan-legacy',
-                        patchSize: 64,  // 메모리 절약
+                        patchSize: mode === 'ultra' ? 128 : 64,  // 울트라는 더 큰 패치 사용
                         padding: 10
                     });
                 }
@@ -898,12 +952,14 @@
                 destCanvas.toBlob(resolve, file.type, 0.95);
             });
 
+            const modeLabel = mode === 'quality' ? '고품질' : mode === 'ultra' ? '울트라' : '스피드';
+
             return {
                 originalFile: file,
                 processedBlob: blob,
                 originalSize: file.size,
                 processedSize: blob.size,
-                info: `${img.width}×${img.height} → ${destCanvas.width}×${destCanvas.height} (${mode === 'ai' ? 'AI' : '스피드'})`
+                info: `${img.width}×${img.height} → ${destCanvas.width}×${destCanvas.height} (${modeLabel})`
             };
         }
 
