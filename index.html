@@ -37,6 +37,7 @@
     <!-- 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pica@9.0.1/dist/pica.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/dist/upscaler.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
     <!-- 공통 스타일 -->
@@ -297,7 +298,7 @@
     <!-- 메인 컨테이너 -->
     <div class="container">
         <header>
-            <h1 data-ko="이미지 도구" data-en="Image Tools">이미지 도구</h1>
+            <h1 id="pageTitle" data-ko="이미지 압축 도구" data-en="Image Compression Tool">이미지 압축 도구</h1>
             <p class="subtitle" data-ko="압축, 리사이즈, 변환, 업스케일 - 한 곳에서 모두" data-en="Compress, Resize, Convert, Upscale - All in One">압축, 리사이즈, 변환, 업스케일 - 한 곳에서 모두</p>
         </header>
 
@@ -518,7 +519,11 @@
                             <div class="option-control">
                                 <div class="btn-group">
                                     <button class="btn-small active" onclick="setUpscaleMode('speed', this)">🚀 <span data-ko="스피드" data-en="Speed">스피드</span></button>
+                                    <button class="btn-small" onclick="setUpscaleMode('ai', this)">🤖 <span data-ko="AI 품질" data-en="AI Quality">AI 품질</span></button>
                                 </div>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                                    <span data-ko="AI 모드: 느리지만 최고 품질 (512x512 이하 권장)" data-en="AI Mode: Slow but best quality (512x512 or less recommended)">AI 모드: 느리지만 최고 품질 (512x512 이하 권장)</span>
+                                </small>
                             </div>
                         </div>
                         <div class="option-row">
@@ -813,24 +818,81 @@
         async function upscaleImage(file) {
             const img = await loadImage(file);
             const scale = modeSettings.upscale.scale;
+            const mode = modeSettings.upscale.mode;
 
-            const picaInstance = pica();
-            const sourceCanvas = document.createElement('canvas');
-            sourceCanvas.width = img.width;
-            sourceCanvas.height = img.height;
-            sourceCanvas.getContext('2d').drawImage(img, 0, 0);
+            let destCanvas;
 
-            const destCanvas = document.createElement('canvas');
-            destCanvas.width = img.width * scale;
-            destCanvas.height = img.height * scale;
+            if (mode === 'ai') {
+                // AI 모드: UpscalerJS 사용
+                // 크기 제한 체크
+                if (img.width > 512 || img.height > 512) {
+                    window.BaalUtils.showToast('AI 모드는 512x512 이하 이미지만 지원합니다. 스피드 모드를 사용하세요.', 'error', 5000);
+                    throw new Error('AI 모드는 512x512 이하 이미지만 지원합니다.');
+                }
 
-            await picaInstance.resize(sourceCanvas, destCanvas, {
-                quality: 3,
-                alpha: true,
-                unsharpAmount: 80,
-                unsharpRadius: 0.6,
-                unsharpThreshold: 2
-            });
+                // UpscalerJS 초기화
+                if (!window.upscalerInstance) {
+                    window.BaalUtils.showToast('AI 모델 로딩 중... (최초 1회, 20-30초 소요)', 'info', 5000);
+                    window.upscalerInstance = new Upscaler({
+                        model: 'esrgan-legacy',
+                        patchSize: 64,  // 메모리 절약
+                        padding: 10
+                    });
+                }
+
+                // 원본 캔버스 생성
+                const sourceCanvas = document.createElement('canvas');
+                sourceCanvas.width = img.width;
+                sourceCanvas.height = img.height;
+                sourceCanvas.getContext('2d').drawImage(img, 0, 0);
+
+                // AI 업스케일 (2x만 지원, 더 높은 배율은 반복)
+                let currentCanvas = sourceCanvas;
+                let currentScale = 1;
+
+                while (currentScale < scale) {
+                    const nextScale = Math.min(2, scale / currentScale);
+                    const upscaled = await window.upscalerInstance.upscale(currentCanvas, {
+                        progress: (percent) => {
+                            // 진행률 표시 (선택사항)
+                        }
+                    });
+
+                    // 결과를 Canvas로 변환
+                    if (upscaled instanceof HTMLCanvasElement) {
+                        currentCanvas = upscaled;
+                    } else if (upscaled instanceof HTMLImageElement) {
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = upscaled.width;
+                        tempCanvas.height = upscaled.height;
+                        tempCanvas.getContext('2d').drawImage(upscaled, 0, 0);
+                        currentCanvas = tempCanvas;
+                    }
+
+                    currentScale *= nextScale;
+                }
+
+                destCanvas = currentCanvas;
+            } else {
+                // 스피드 모드: pica 사용
+                const picaInstance = pica();
+                const sourceCanvas = document.createElement('canvas');
+                sourceCanvas.width = img.width;
+                sourceCanvas.height = img.height;
+                sourceCanvas.getContext('2d').drawImage(img, 0, 0);
+
+                destCanvas = document.createElement('canvas');
+                destCanvas.width = img.width * scale;
+                destCanvas.height = img.height * scale;
+
+                await picaInstance.resize(sourceCanvas, destCanvas, {
+                    quality: 3,
+                    alpha: true,
+                    unsharpAmount: 80,
+                    unsharpRadius: 0.6,
+                    unsharpThreshold: 2
+                });
+            }
 
             const blob = await new Promise(resolve => {
                 destCanvas.toBlob(resolve, file.type, 0.95);
@@ -841,7 +903,7 @@
                 processedBlob: blob,
                 originalSize: file.size,
                 processedSize: blob.size,
-                info: `${img.width}×${img.height} → ${destCanvas.width}×${destCanvas.height}`
+                info: `${img.width}×${img.height} → ${destCanvas.width}×${destCanvas.height} (${mode === 'ai' ? 'AI' : '스피드'})`
             };
         }
 
@@ -934,8 +996,41 @@
             window.BaalUtils.showToast('ZIP 다운로드 완료!', 'success', 5000);
         });
 
+        // 페이지 제목 설정
+        function setPageTitle() {
+            const titleElement = document.getElementById('pageTitle');
+            const titles = {
+                compress: {
+                    ko: '이미지 압축 도구',
+                    en: 'Image Compression Tool'
+                },
+                resize: {
+                    ko: '이미지 리사이즈 도구',
+                    en: 'Image Resize Tool'
+                },
+                convert: {
+                    ko: '이미지 변환 도구',
+                    en: 'Image Conversion Tool'
+                },
+                upscale: {
+                    ko: '이미지 업스케일 도구',
+                    en: 'Image Upscale Tool'
+                }
+            };
+
+            const currentLang = document.body.getAttribute('data-lang') || 'ko';
+            const title = titles[DEFAULT_TAB];
+
+            if (titleElement && title) {
+                titleElement.setAttribute('data-ko', title.ko);
+                titleElement.setAttribute('data-en', title.en);
+                titleElement.textContent = title[currentLang];
+            }
+        }
+
         // 초기화
         document.addEventListener('DOMContentLoaded', () => {
+            setPageTitle();
             switchMode(DEFAULT_TAB);
         });
     </script>
