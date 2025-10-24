@@ -366,11 +366,20 @@
             </div>
 
             <!-- 드롭존 (공통) -->
-            <div class="dropzone" id="dropzone">
-                <p data-ko="이미지를 드래그하거나 클릭하여 업로드 (최대 20개)" data-en="Drag & drop images or click to upload (Max 20)">
-                    이미지를 드래그하거나 클릭하여 업로드 (최대 20개)
-                </p>
-                <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+            <div style="position: relative;">
+                <div class="dropzone" id="dropzone">
+                    <p data-ko="이미지를 드래그하거나 클릭하여 업로드 (최대 20개)" data-en="Drag & drop images or click to upload (Max 20)">
+                        이미지를 드래그하거나 클릭하여 업로드 (최대 20개)
+                    </p>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Auto 체크박스 (드롭존 좌측 하단 바깥) -->
+                <label style="position: absolute; left: 0; bottom: -35px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 0.9em;">
+                    <input type="checkbox" id="autoProcessCheck" style="width: 16px; height: 16px; cursor: pointer;">
+                    <span style="color: var(--text-secondary);" data-ko="Auto Start" data-en="Auto Start">Auto Start</span>
+                    <span class="tooltip-icon" style="width: 16px; height: 16px; line-height: 16px; font-size: 0.7em;" data-tooltip="이미지 업로드 즉시 작업을 시작합니다">?</span>
+                </label>
             </div>
 
             <!-- 파일 리스트 -->
@@ -379,16 +388,10 @@
             </div>
 
             <!-- 작업 시작 컨트롤 -->
-            <div id="processControl" style="display: none; margin-top: 20px; text-align: center;">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                    <button id="startProcessBtn" class="btn-primary" style="padding: 12px 32px; font-size: 1.1em; background: var(--gold-primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" data-ko="작업 시작" data-en="Start Processing">
-                        작업 시작
-                    </button>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" id="autoProcessCheck" style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: 0.95em; color: var(--text-primary);" data-ko="Auto (업로드 시 자동 실행)" data-en="Auto (process on upload)">Auto (업로드 시 자동 실행)</span>
-                    </label>
-                </div>
+            <div id="processControl" style="display: none; margin-top: 50px; text-align: center;">
+                <button id="startProcessBtn" class="btn-primary" style="padding: 12px 32px; font-size: 1.1em; background: var(--gold-primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" data-ko="작업 시작" data-en="Start Processing">
+                    작업 시작
+                </button>
             </div>
 
             <!-- 다운로드 버튼 -->
