@@ -143,6 +143,22 @@
         .btn-small {
             padding: 8px 16px;
             font-size: 0.9em;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            box-shadow: none;
+        }
+
+        .btn-small:hover {
+            border-color: var(--gold-primary);
+            background: var(--bg-accent);
+        }
+
+        .btn-small.active {
+            background: var(--gold-gradient);
+            color: white;
+            border-color: var(--gold-primary);
+            box-shadow: var(--shadow-sm);
         }
 
         /* 파일 리스트 */
@@ -432,10 +448,10 @@
                             <span class="option-label" data-ko="최대 크기" data-en="Max Size">최대 크기</span>
                             <div class="option-control">
                                 <div class="btn-group">
-                                    <button class="btn-small" onclick="setMaxSize(0.5)">500KB</button>
-                                    <button class="btn-small active" onclick="setMaxSize(1)">1MB</button>
-                                    <button class="btn-small" onclick="setMaxSize(2)">2MB</button>
-                                    <button class="btn-small" onclick="setMaxSize(5)">5MB</button>
+                                    <button class="btn-small" onclick="setMaxSize(0.5, this)">500KB</button>
+                                    <button class="btn-small active" onclick="setMaxSize(1, this)">1MB</button>
+                                    <button class="btn-small" onclick="setMaxSize(2, this)">2MB</button>
+                                    <button class="btn-small" onclick="setMaxSize(5, this)">5MB</button>
                                 </div>
                             </div>
                         </div>
@@ -454,9 +470,9 @@
                             <span class="option-label" data-ko="방식" data-en="Mode">방식</span>
                             <div class="option-control">
                                 <div class="btn-group">
-                                    <button class="btn-small active" onclick="setResizeMode('pixel')" data-ko="픽셀" data-en="Pixel">픽셀</button>
-                                    <button class="btn-small" onclick="setResizeMode('percent')" data-ko="비율" data-en="Percent">비율</button>
-                                    <button class="btn-small" onclick="setResizeMode('preset')" data-ko="프리셋" data-en="Preset">프리셋</button>
+                                    <button class="btn-small active" onclick="setResizeMode('pixel', this)" data-ko="픽셀" data-en="Pixel">픽셀</button>
+                                    <button class="btn-small" onclick="setResizeMode('percent', this)" data-ko="비율" data-en="Percent">비율</button>
+                                    <button class="btn-small" onclick="setResizeMode('preset', this)" data-ko="프리셋" data-en="Preset">프리셋</button>
                                 </div>
                             </div>
                         </div>
@@ -473,9 +489,9 @@
                             <span class="option-label" data-ko="출력 포맷" data-en="Output Format">출력 포맷</span>
                             <div class="option-control">
                                 <div class="btn-group">
-                                    <button class="btn-small active" onclick="setConvertFormat('image/jpeg')">JPEG</button>
-                                    <button class="btn-small" onclick="setConvertFormat('image/png')">PNG</button>
-                                    <button class="btn-small" onclick="setConvertFormat('image/webp')">WebP</button>
+                                    <button class="btn-small active" onclick="setConvertFormat('image/jpeg', this)">JPEG</button>
+                                    <button class="btn-small" onclick="setConvertFormat('image/png', this)">PNG</button>
+                                    <button class="btn-small" onclick="setConvertFormat('image/webp', this)">WebP</button>
                                 </div>
                             </div>
                         </div>
@@ -501,7 +517,7 @@
                             <span class="option-label" data-ko="모드" data-en="Mode">모드</span>
                             <div class="option-control">
                                 <div class="btn-group">
-                                    <button class="btn-small active" onclick="setUpscaleMode('speed')">🚀 <span data-ko="스피드" data-en="Speed">스피드</span></button>
+                                    <button class="btn-small active" onclick="setUpscaleMode('speed', this)">🚀 <span data-ko="스피드" data-en="Speed">스피드</span></button>
                                 </div>
                             </div>
                         </div>
@@ -509,9 +525,9 @@
                             <span class="option-label" data-ko="배율" data-en="Scale">배율</span>
                             <div class="option-control">
                                 <div class="btn-group">
-                                    <button class="btn-small active" onclick="setUpscaleScale(2)">2x</button>
-                                    <button class="btn-small" onclick="setUpscaleScale(3)">3x</button>
-                                    <button class="btn-small" onclick="setUpscaleScale(4)">4x</button>
+                                    <button class="btn-small active" onclick="setUpscaleScale(2, this)">2x</button>
+                                    <button class="btn-small" onclick="setUpscaleScale(3, this)">3x</button>
+                                    <button class="btn-small" onclick="setUpscaleScale(4, this)">4x</button>
                                 </div>
                             </div>
                         </div>
@@ -524,17 +540,24 @@
         }
 
         // 압축 설정
-        function setMaxSize(mb) {
+        function setMaxSize(mb, element) {
             modeSettings.compress.maxSizeMB = mb;
             document.querySelectorAll('.options-group .btn-small').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            element.classList.add('active');
         }
 
         // 리사이즈 모드 설정
-        function setResizeMode(mode) {
+        function setResizeMode(mode, element) {
             modeSettings.resize.mode = mode;
+
+            // 버튼 활성화
+            document.querySelectorAll('.options-group .btn-small').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            element.classList.add('active');
+
             const container = document.getElementById('resizeOptions');
 
             if (mode === 'pixel') {
@@ -564,7 +587,7 @@
                 `;
             } else if (mode === 'preset') {
                 const presetsHTML = Object.entries(SOCIAL_PRESETS).map(([key, preset]) => `
-                    <div class="preset-btn" onclick="selectPreset('${key}')">
+                    <div class="preset-btn" onclick="selectPreset('${key}', this)">
                         <div class="preset-name">${preset.name}</div>
                         <div class="preset-size">${preset.width} × ${preset.height}</div>
                     </div>
@@ -577,49 +600,43 @@
                 `;
             }
 
-            // 버튼 활성화
-            document.querySelectorAll('.options-group .btn-small').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
             // 언어 업데이트
             updateLanguage(document.body.getAttribute('data-lang') || 'ko');
         }
 
         // 프리셋 선택
-        function selectPreset(key) {
+        function selectPreset(key, element) {
             modeSettings.resize.preset = SOCIAL_PRESETS[key];
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.closest('.preset-btn').classList.add('active');
+            element.closest('.preset-btn').classList.add('active');
         }
 
         // 변환 포맷 설정
-        function setConvertFormat(format) {
+        function setConvertFormat(format, element) {
             modeSettings.convert.format = format;
             document.querySelectorAll('.options-group .btn-small').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            element.classList.add('active');
         }
 
         // 업스케일 모드 설정
-        function setUpscaleMode(mode) {
+        function setUpscaleMode(mode, element) {
             modeSettings.upscale.mode = mode;
             document.querySelectorAll('.options-group .btn-group .btn-small').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            element.classList.add('active');
         }
 
         // 업스케일 배율 설정
-        function setUpscaleScale(scale) {
+        function setUpscaleScale(scale, element) {
             modeSettings.upscale.scale = scale;
             const buttons = document.querySelectorAll('.option-row:nth-child(2) .btn-small');
             buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            element.classList.add('active');
         }
 
         // 파일 업로드 초기화
