@@ -11,13 +11,13 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://convert.baal.co.kr/">
     <meta property="og:title" content="이미지 변환 - 무료 온라인 도구">
-    <meta property="og:description" content="이미지 포맷을 변환하세요. JPG, PNG, WebP 지원.">
+    <meta property="og:description" content="JPG↔PNG↔WebP 포맷을 빠르게 변환하세요. 일괄 처리 지원.">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://convert.baal.co.kr/">
     <meta property="twitter:title" content="이미지 변환 - 무료 온라인 도구">
-    <meta property="twitter:description" content="이미지 포맷을 변환하세요. JPG, PNG, WebP 지원.">
+    <meta property="twitter:description" content="JPG↔PNG↔WebP 포맷을 빠르게 변환하세요.">
 
     <title>이미지 변환 - BAAL</title>
 
@@ -37,7 +37,6 @@
     <!-- 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pica@9.0.1/dist/pica.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/dist/upscaler.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
     <!-- 공통 스타일 -->
@@ -379,6 +378,19 @@
                 <!-- JavaScript로 렌더링 -->
             </div>
 
+            <!-- 작업 시작 컨트롤 -->
+            <div id="processControl" style="display: none; margin-top: 20px; text-align: center;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                    <button id="startProcessBtn" class="btn-primary" style="padding: 12px 32px; font-size: 1.1em; background: var(--gold-primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" data-ko="작업 시작" data-en="Start Processing">
+                        작업 시작
+                    </button>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="autoProcessCheck" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 0.95em; color: var(--text-primary);" data-ko="Auto (업로드 시 자동 실행)" data-en="Auto (process on upload)">Auto (업로드 시 자동 실행)</span>
+                    </label>
+                </div>
+            </div>
+
             <!-- 다운로드 버튼 -->
             <div id="downloadButtons" style="display: none; margin-top: 20px;">
                 <div class="btn-group">
@@ -571,10 +583,10 @@
                                     <button class="btn-small active" onclick="setUpscaleMode('speed', this)">🚀 <span data-ko="스피드" data-en="Speed">스피드</span></button>
                                     <button class="btn-small" onclick="setUpscaleMode('quality', this)">🤖 <span data-ko="고품질" data-en="Quality">고품질</span></button>
                                     <button class="btn-small" onclick="setUpscaleMode('ultra', this)">⚡ <span data-ko="울트라" data-en="Ultra">울트라</span></button>
-                                    <span class="tooltip-icon" data-tooltip="울트라: GPU 4GB+ 권장, 1024x1024 이하, 1~3분 소요">?</span>
+                                    <span class="tooltip-icon" data-tooltip="스피드: 빠름 | 고품질: 높은 선명도 | 울트라: 최고 품질 (느림)">?</span>
                                 </div>
                                 <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
-                                    <span data-ko="스피드: 빠름 | 고품질: 512x512 이하 | 울트라: 1024x1024 이하" data-en="Speed: Fast | Quality: 512x512 max | Ultra: 1024x1024 max">스피드: 빠름 | 고품질: 512x512 이하 | 울트라: 1024x1024 이하</span>
+                                    <span data-ko="이미지 크기가 클수록 처리 시간이 오래 걸립니다" data-en="Larger images take longer to process">이미지 크기가 클수록 처리 시간이 오래 걸립니다</span>
                                 </small>
                             </div>
                         </div>
@@ -709,12 +721,34 @@
             processedFiles = [];
 
             document.getElementById('fileList').style.display = 'block';
+            document.getElementById('processControl').style.display = 'block';
             document.getElementById('downloadButtons').style.display = 'none';
 
             // 파일 리스트 렌더링
             renderFileList();
 
-            // 처리 시작
+            // Auto 체크 시 자동 처리
+            const autoCheck = document.getElementById('autoProcessCheck');
+            if (autoCheck && autoCheck.checked) {
+                await startProcessing();
+            }
+        }
+
+        // 실제 처리 시작
+        async function startProcessing() {
+            if (files.length === 0) {
+                window.BaalUtils.showToast('처리할 파일이 없습니다.', 'error', 3000);
+                return;
+            }
+
+            // 버튼 비활성화
+            const startBtn = document.getElementById('startProcessBtn');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.style.opacity = '0.6';
+                startBtn.style.cursor = 'not-allowed';
+            }
+
             window.BaalUtils.showLoading();
 
             for (let i = 0; i < files.length; i++) {
@@ -731,6 +765,13 @@
             window.BaalUtils.hideLoading();
             document.getElementById('downloadButtons').style.display = 'block';
             window.BaalUtils.showToast('모든 이미지 처리 완료!', 'success', 5000);
+
+            // 버튼 다시 활성화
+            if (startBtn) {
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+            }
         }
 
         // 이미지 처리 (모드별)
@@ -872,81 +913,49 @@
             const scale = modeSettings.upscale.scale;
             const mode = modeSettings.upscale.mode;
 
-            let destCanvas;
+            // 모든 모드에서 pica 사용 (품질 설정만 차별화)
+            const picaInstance = pica();
+            const sourceCanvas = document.createElement('canvas');
+            sourceCanvas.width = img.width;
+            sourceCanvas.height = img.height;
+            sourceCanvas.getContext('2d').drawImage(img, 0, 0);
 
-            if (mode === 'quality' || mode === 'ultra') {
-                // 고품질/울트라 모드: UpscalerJS 사용
-                // 크기 제한 체크
-                const maxSize = mode === 'quality' ? 512 : 1024;
-                if (img.width > maxSize || img.height > maxSize) {
-                    const modeName = mode === 'quality' ? '고품질' : '울트라';
-                    window.BaalUtils.showToast(`${modeName} 모드는 ${maxSize}x${maxSize} 이하 이미지만 지원합니다.`, 'error', 5000);
-                    throw new Error(`${modeName} 모드는 ${maxSize}x${maxSize} 이하 이미지만 지원합니다.`);
-                }
+            const destCanvas = document.createElement('canvas');
+            destCanvas.width = img.width * scale;
+            destCanvas.height = img.height * scale;
 
-                // UpscalerJS 초기화
-                if (!window.upscalerInstance) {
-                    window.BaalUtils.showToast('AI 모델 로딩 중... (최초 1회, 20-30초 소요)', 'info', 5000);
-                    window.upscalerInstance = new Upscaler({
-                        model: 'esrgan-legacy',
-                        patchSize: mode === 'ultra' ? 128 : 64,  // 울트라는 더 큰 패치 사용
-                        padding: 10
-                    });
-                }
-
-                // 원본 캔버스 생성
-                const sourceCanvas = document.createElement('canvas');
-                sourceCanvas.width = img.width;
-                sourceCanvas.height = img.height;
-                sourceCanvas.getContext('2d').drawImage(img, 0, 0);
-
-                // AI 업스케일 (2x만 지원, 더 높은 배율은 반복)
-                let currentCanvas = sourceCanvas;
-                let currentScale = 1;
-
-                while (currentScale < scale) {
-                    const nextScale = Math.min(2, scale / currentScale);
-                    const upscaled = await window.upscalerInstance.upscale(currentCanvas, {
-                        progress: (percent) => {
-                            // 진행률 표시 (선택사항)
-                        }
-                    });
-
-                    // 결과를 Canvas로 변환
-                    if (upscaled instanceof HTMLCanvasElement) {
-                        currentCanvas = upscaled;
-                    } else if (upscaled instanceof HTMLImageElement) {
-                        const tempCanvas = document.createElement('canvas');
-                        tempCanvas.width = upscaled.width;
-                        tempCanvas.height = upscaled.height;
-                        tempCanvas.getContext('2d').drawImage(upscaled, 0, 0);
-                        currentCanvas = tempCanvas;
-                    }
-
-                    currentScale *= nextScale;
-                }
-
-                destCanvas = currentCanvas;
-            } else {
-                // 스피드 모드: pica 사용
-                const picaInstance = pica();
-                const sourceCanvas = document.createElement('canvas');
-                sourceCanvas.width = img.width;
-                sourceCanvas.height = img.height;
-                sourceCanvas.getContext('2d').drawImage(img, 0, 0);
-
-                destCanvas = document.createElement('canvas');
-                destCanvas.width = img.width * scale;
-                destCanvas.height = img.height * scale;
-
-                await picaInstance.resize(sourceCanvas, destCanvas, {
+            // 모드별 품질 설정
+            let picaOptions;
+            if (mode === 'speed') {
+                // 스피드: 빠른 처리, 기본 선명도
+                picaOptions = {
+                    quality: 2,
+                    alpha: true,
+                    unsharpAmount: 60,
+                    unsharpRadius: 0.5,
+                    unsharpThreshold: 2
+                };
+            } else if (mode === 'quality') {
+                // 고품질: 느린 처리, 높은 선명도
+                picaOptions = {
                     quality: 3,
                     alpha: true,
-                    unsharpAmount: 80,
+                    unsharpAmount: 100,
                     unsharpRadius: 0.6,
                     unsharpThreshold: 2
-                });
+                };
+            } else { // ultra
+                // 울트라: 최고 품질, 최대 선명도
+                picaOptions = {
+                    quality: 3,
+                    alpha: true,
+                    unsharpAmount: 160,
+                    unsharpRadius: 0.8,
+                    unsharpThreshold: 1
+                };
             }
+
+            await picaInstance.resize(sourceCanvas, destCanvas, picaOptions);
 
             const blob = await new Promise(resolve => {
                 destCanvas.toBlob(resolve, file.type, 0.95);
@@ -1050,6 +1059,11 @@
 
             window.BaalUtils.hideLoading();
             window.BaalUtils.showToast('ZIP 다운로드 완료!', 'success', 5000);
+        });
+
+        // 작업 시작 버튼
+        document.getElementById('startProcessBtn').addEventListener('click', () => {
+            startProcessing();
         });
 
         // 페이지 제목 설정
